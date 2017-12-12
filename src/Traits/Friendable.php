@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Event;
 
 /**
  * Class Friendable
- *
  * @package Hootlex\Friendships\Traits
  */
 trait Friendable
@@ -107,15 +106,15 @@ trait Friendable
         ]);
     }
 
+
     /**
      * @param Model $friend
-     * @param       $groupSlug
-     *
+     * @param $groupSlug
      * @return bool
      */
     public function groupFriend(Model $friend, $groupSlug)
     {
-        $friendship = $this->findFriendship($friend)->whereStatus(Status::ACCEPTED)->first();
+        $friendship       = $this->findFriendship($friend)->whereStatus(Status::ACCEPTED)->first();
         $groupsAvailable = config('friendships.groups', []);
 
         if (!isset($groupsAvailable[$groupSlug]) || empty($friendship)) {
@@ -124,23 +123,23 @@ trait Friendable
 
         $group = $friendship->groups()->firstOrCreate([
             'friendship_id' => $friendship->id,
-            'group_id' => $groupsAvailable[$groupSlug],
-            'friend_id' => $friend->getKey(),
-            'friend_type' => $friend->getMorphClass(),
+            'group_id'      => $groupsAvailable[$groupSlug],
+            'friend_id'     => $friend->getKey(),
+            'friend_type'   => $friend->getMorphClass(),
         ]);
 
         return $group->wasRecentlyCreated;
+
     }
 
     /**
      * @param Model $friend
-     * @param       $groupSlug
-     *
+     * @param $groupSlug
      * @return bool
      */
     public function ungroupFriend(Model $friend, $groupSlug = '')
     {
-        $friendship = $this->findFriendship($friend)->first();
+        $friendship       = $this->findFriendship($friend)->first();
         $groupsAvailable = config('friendships.groups', []);
 
         if (empty($friendship)) {
@@ -149,8 +148,8 @@ trait Friendable
 
         $where = [
             'friendship_id' => $friendship->id,
-            'friend_id' => $friend->getKey(),
-            'friend_type' => $friend->getMorphClass(),
+            'friend_id'     => $friend->getKey(),
+            'friend_type'   => $friend->getMorphClass(),
         ];
 
         if ('' !== $groupSlug && isset($groupsAvailable[$groupSlug])) {
@@ -289,7 +288,7 @@ trait Friendable
      * This method will not return Friendship models
      * It will return the 'friends' models. ex: App\User
      *
-     * @param int    $perPage Number
+     * @param int $perPage Number
      * @param string $groupSlug
      *
      * @return \Illuminate\Database\Eloquent\Collection
@@ -297,6 +296,20 @@ trait Friendable
     public function getFriends($perPage = 0, $groupSlug = '')
     {
         return $this->getOrPaginate($this->getFriendsQueryBuilder($groupSlug), $perPage);
+    }
+
+    /**
+     * This method will not return Friendship models
+     * It will return the 'friends' models. ex: App\User
+     *
+     * @param int $perPage Number
+     * @param string $groupSlug
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAllFriends($perPage = 0)
+    {
+        return $this->getOrPaginate($this->getAllFriendsQueryBuilder(), $perPage);
     }
 
     /**
@@ -334,6 +347,7 @@ trait Friendable
     {
         return $this->getOrPaginate($this->friendsOfFriendsQueryBuilder(), $perPage);
     }
+
 
     /**
      * Get the number of friends
@@ -383,7 +397,7 @@ trait Friendable
     }
 
     /**
-     * @param        $status
+     * @param $status
      * @param string $groupSlug
      *
      * @return \Illuminate\Database\Eloquent\Collection
@@ -416,8 +430,17 @@ trait Friendable
     private function getFriendsQueryBuilder($groupSlug = '')
     {
         $friendships = $this->findFriendships(Status::ACCEPTED, $groupSlug)->get(['sender_id', 'recipient_id']);
-        $recipients = $friendships->pluck('recipient_id')->all();
-        $senders = $friendships->pluck('sender_id')->all();
+        $recipients  = $friendships->pluck('recipient_id')->all();
+        $senders     = $friendships->pluck('sender_id')->all();
+
+        return $this->where('id', '!=', $this->getKey())->whereIn('id', array_merge($recipients, $senders));
+    }
+
+    private function getAllFriendsQueryBuilder()
+    {
+        $friendships = $this->findFriendships(null, '')->get(['sender_id', 'recipient_id']);
+        $recipients  = $friendships->pluck('recipient_id')->all();
+        $senders     = $friendships->pluck('sender_id')->all();
 
         return $this->where('id', '!=', $this->getKey())->whereIn('id', array_merge($recipients, $senders));
     }
@@ -483,6 +506,7 @@ trait Friendable
 //                return [$item->sender_id, $item->recipient_id];
 //            })->flatten()->all()
 //        );
+
 
         return $this->whereIn('id', $fofIds)->whereNotIn('id', $friendIds);
     }
